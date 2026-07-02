@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  PATIENT
+}
+
+enum Sex {
+  M
+  F
+}
+
+enum AppointmentStatus {
+  Pending
+  Scheduled
+  Completed
+  Cancelled
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(PATIENT)
+  displayName  String
+  mfaEnabled   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+  patient      Patient?
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Patient {
+  id           String         @id @default(cuid())
+  patientNo    String         @unique
+  userId       String?        @unique
+  fullName     String
+  dob          DateTime
+  sex          Sex
+  civilStatus  String         @default("")
+  contact      String         @default("")
+  address      String         @default("")
+  occupation   String         @default("")
+  allergies    String         @default("")
+  pmh          Json
+  pmhOther     String         @default("")
+  psh          String         @default("")
+  family       Json
+  smoking      String         @default("None")
+  alcohol      String         @default("None")
+  vaccination  String         @default("")
+  weight       String         @default("")
+  height       String         @default("")
+  lastVisit    String         @default("No visits yet")
+  archivedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  consults     Consult[]
+  appointments Appointment[]
+
+  @@index([fullName])
+  @@index([contact])
+}
+
+model Consult {
+  id                        String   @id @default(cuid())
+  encounterNo               String   @unique
+  patientId                 String
+  dateTime                  DateTime @default(now())
+  chiefComplaint            String   @default("")
+  subjective                String   @default("")
+  objective                 String   @default("")
+  vitals                    Json
+  assessment                String   @default("")
+  plan                      String   @default("")
+  labs                      Json
+  prescriptions             Json
+  certificateRecommendation String   @default("")
+  certificateGenerated      Boolean  @default(false)
+  referral                  String   @default("")
+  followUpDate              DateTime?
+  saved                     Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  patient                   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([dateTime])
+}
+
+model Appointment {
+  id            String            @id @default(cuid())
+  patientId     String
+  preferredDate DateTime
+  preferredTime String            @default("")
+  reason        String            @default("")
+  status        AppointmentStatus @default(Pending)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  patient       Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([status])
+  @@index([preferredDate])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  target    String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
