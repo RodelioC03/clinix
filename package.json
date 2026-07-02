@@ -6,9 +6,9 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "vinext dev --hostname 127.0.0.1 --port 3001",
-    "build": "vinext build",
-    "start": "vinext start",
+    "dev": "next dev -H 127.0.0.1 -p 3001",
+    "build": "next build",
+    "start": "next start -H 127.0.0.1 -p 3001",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "prisma:generate": "prisma generate",

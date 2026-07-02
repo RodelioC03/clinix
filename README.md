@@ -6,7 +6,7 @@ The app follows the supplied solo-clinic workflow and intentionally does not inc
 
 ## Stack
 
-- Next/Vinext
+- Next.js
 - React
 - TypeScript
 - PostgreSQL
@@ -33,6 +33,8 @@ This is still a development build. Before real patient use, complete a full secu
 - Node.js 22+
 - PostgreSQL
 - npm
+
+For deployment, use a Node-compatible host with PostgreSQL support, such as Railway, Render, Fly.io, a VPS, or Vercel plus a managed PostgreSQL provider. This Prisma/PostgreSQL version is not meant for static GitHub Pages or Cloudflare Worker-only hosting.
 
 ## Setup
 
