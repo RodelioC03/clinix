@@ -1,0 +1,11 @@
+.env
+.env.*
+.env*
+.next
+node_modules
+dev-server*.log
+cloud-start-test*.log
+dist
+.vinext
+.wrangler
+.wrangler-config*
