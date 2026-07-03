@@ -19,6 +19,7 @@ The app follows the supplied solo-clinic workflow and intentionally does not inc
 The app includes a PostgreSQL/Prisma backend for:
 
 - Patient self-registration with `PATIENT` role
+- Admin-only doctor/admin account creation
 - Doctor/admin-only patient and consult writes
 - Patient-scoped records
 - Secure password hashing
@@ -133,7 +134,16 @@ npm.cmd run prisma:generate
 npm.cmd run prisma:migrate -- --name init
 ```
 
-6. Seed demo users and sample clinic data:
+6. Create the first admin account:
+
+```powershell
+$env:ADMIN_EMAIL="admin@yourclinic.com"
+$env:ADMIN_PASSWORD="ChangeThisPassword123!"
+$env:ADMIN_NAME="Clinic Admin"
+npm.cmd run account:create-admin
+```
+
+7. Seed demo users and sample clinic data only if you want local sample data:
 
 ```bash
 npm.cmd run prisma:seed
@@ -151,7 +161,24 @@ Open:
 http://127.0.0.1:3001/
 ```
 
+## Account Creation
+
+Patient accounts can self-register from the login screen. Doctor and admin accounts are created by an admin from the in-app Staff page.
+
+For a new database, create the first admin with:
+
+```powershell
+$env:ADMIN_EMAIL="admin@yourclinic.com"
+$env:ADMIN_PASSWORD="ChangeThisPassword123!"
+$env:ADMIN_NAME="Clinic Admin"
+npm.cmd run account:create-admin
+```
+
+Then sign in with that admin account, open `Staff`, and create doctor logins.
+
 ## Demo Accounts
+
+Demo accounts only exist after running `npm.cmd run prisma:seed`.
 
 Doctor:
 

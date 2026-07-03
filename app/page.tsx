@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 type Role = "DOCTOR" | "ADMIN" | "PATIENT";
-type DoctorView = "Dashboard" | "Search" | "NewPatient" | "Chart" | "Consult" | "Today" | "FollowUps" | "Settings";
+type DoctorView = "Dashboard" | "Search" | "NewPatient" | "Chart" | "Consult" | "Today" | "FollowUps" | "Staff" | "Settings";
 type PatientView = "Home" | "Appointments" | "Records" | "Prescriptions" | "Profile" | "Settings";
 type Panel = "none" | "prescription" | "lab" | "imaging" | "certificate" | "referral" | "follow-up";
 type Status = "Pending" | "Scheduled" | "Completed" | "Cancelled";
@@ -113,6 +113,15 @@ type Session = {
   email?: string;
   displayName?: string;
   patientId?: string;
+};
+
+type StaffUser = {
+  id: string;
+  email: string;
+  role: "ADMIN" | "DOCTOR";
+  displayName: string;
+  mfaEnabled: boolean;
+  createdAt: string;
 };
 
 const THEME_KEY = "clinix-emr-theme";
@@ -319,8 +328,8 @@ export default function Home() {
   const [panel, setPanel] = useState<Panel>("none");
   const [notice, setNotice] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [loginEmail, setLoginEmail] = useState("doctor@clinix.local");
-  const [loginPassword, setLoginPassword] = useState("demo123");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [registerOpen, setRegisterOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
 
@@ -394,8 +403,10 @@ export default function Home() {
       });
       const nextSession = sessionFromUser(payload.user);
       setSession(nextSession);
+      setDoctorView("Dashboard");
+      setPatientView("Home");
       await loadAppState(nextSession);
-      setNotice(nextSession.role === "PATIENT" ? "Patient portal opened securely." : "Doctor workspace opened securely.");
+      setNotice(nextSession.role === "PATIENT" ? "Patient portal opened securely." : "Clinic workspace opened securely.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Unable to sign in.");
     } finally {
@@ -481,6 +492,7 @@ export default function Home() {
   }
 
   function updatePatient(patch: Partial<Patient>) {
+    if (!activePatient) return;
     const nextPatient = { ...activePatient, ...patch };
     setState((current) => ({
       ...current,
@@ -579,6 +591,8 @@ export default function Home() {
   async function signOut() {
     await apiJson("/api/auth/logout", { method: "POST" }).catch(() => undefined);
     setSession(null);
+    setDoctorView("Dashboard");
+    setPatientView("Home");
     setNotice("");
   }
 
@@ -596,8 +610,6 @@ export default function Home() {
             <button className="primary-button" disabled={isBusy} type="submit">{isBusy ? "Signing in..." : "Sign in"}</button>
           </form>
           <div className="auth-hints">
-            <button onClick={() => setLoginEmail("doctor@clinix.local")}>Use doctor demo</button>
-            <button onClick={() => setLoginEmail("juan.patient@clinix.local")}>Use patient demo</button>
             <button onClick={() => setRegisterOpen(!registerOpen)}>Register patient</button>
           </div>
           {registerOpen && (
@@ -662,7 +674,7 @@ export default function Home() {
     <Shell
       brand={state.settings.clinicName}
       darkMode={state.settings.darkMode}
-        nav={["Dashboard", "Search", "NewPatient", "Chart", "Consult", "Today", "FollowUps", "Settings"]}
+      nav={session.role === "ADMIN" ? ["Dashboard", "Search", "NewPatient", "Chart", "Consult", "Today", "FollowUps", "Staff", "Settings"] : ["Dashboard", "Search", "NewPatient", "Chart", "Consult", "Today", "FollowUps", "Settings"]}
       active={doctorView}
       setActive={(view) => setDoctorView(view as DoctorView)}
       onSignOut={signOut}
@@ -670,7 +682,7 @@ export default function Home() {
     >
       {notice && <Notice text={notice} onClose={() => setNotice("")} />}
       {doctorView === "Dashboard" && (
-        <DoctorDashboard pendingCount={pendingFollowUps.length} setView={setDoctorView} startNew={() => openPatient(activePatient.id, "Consult")} />
+        <DoctorDashboard pendingCount={pendingFollowUps.length} setView={setDoctorView} startNew={() => activePatient ? openPatient(activePatient.id, "Consult") : setDoctorView("NewPatient")} />
       )}
       {doctorView === "Search" && (
         <PatientSearch query={query} setQuery={setQuery} patients={filteredPatients} openPatient={openPatient} />
@@ -679,25 +691,30 @@ export default function Home() {
         <NewPatientForm createPatient={createPatient} />
       )}
       {doctorView === "Chart" && (
-        <ChartView patient={activePatient} updatePatient={updatePatient} startConsult={() => setDoctorView("Consult")} />
+        activePatient ? <ChartView patient={activePatient} updatePatient={updatePatient} startConsult={() => setDoctorView("Consult")} /> : <EmptyPatientState setView={setDoctorView} />
       )}
       {doctorView === "Consult" && (
-        <ConsultView
-          addOrder={addOrder}
-          addPrescription={addPrescription}
-          draft={draft}
-          panel={panel}
-          patient={activePatient}
-          saveAll={saveAll}
-          setPanel={setPanel}
-          updateDraft={updateDraft}
-        />
+        activePatient ? (
+          <ConsultView
+            addOrder={addOrder}
+            addPrescription={addPrescription}
+            draft={draft}
+            panel={panel}
+            patient={activePatient}
+            saveAll={saveAll}
+            setPanel={setPanel}
+            updateDraft={updateDraft}
+          />
+        ) : <EmptyPatientState setView={setDoctorView} />
       )}
       {doctorView === "Today" && (
         <TodayConsults consults={state.consults} patients={state.patients} open={(consult) => { setDraft(consult); setActivePatientId(consult.patientId); setDoctorView("Consult"); }} />
       )}
       {doctorView === "FollowUps" && (
         <FollowUps appointments={state.appointments} patients={state.patients} updateAppointment={updateAppointment} />
+      )}
+      {doctorView === "Staff" && session.role === "ADMIN" && (
+        <StaffAccounts onNotice={setNotice} />
       )}
       {doctorView === "Settings" && (
         <DoctorSettings
@@ -755,6 +772,19 @@ function DoctorDashboard({ pendingCount, setView, startNew }: { pendingCount: nu
         <button onClick={() => setView("Today")}><strong>Today&apos;s consults</strong><span>Open saved encounters</span></button>
         <button onClick={() => setView("FollowUps")}><strong>Pending follow-ups</strong><span>{pendingCount} requests waiting</span></button>
       </section>
+    </section>
+  );
+}
+
+function EmptyPatientState({ setView }: { setView: (view: DoctorView) => void }) {
+  return (
+    <section className="page-stack">
+      <PageTitle
+        title="No Patient Selected"
+        detail="Create the first patient chart before opening a chart or consultation."
+        action={<button className="primary-button" onClick={() => setView("NewPatient")}>New patient</button>}
+      />
+      <p className="empty-state">No patient charts are available yet.</p>
     </section>
   );
 }
@@ -1164,6 +1194,103 @@ function FollowUps({ appointments, patients, updateAppointment }: { appointments
   );
 }
 
+function StaffAccounts({ onNotice }: { onNotice: (text: string) => void }) {
+  const [staff, setStaff] = useState<StaffUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchStaff() {
+      try {
+        const payload = await apiJson<{ users: StaffUser[] }>("/api/admin/users");
+        if (!cancelled) setStaff(payload.users);
+      } catch (error) {
+        if (!cancelled) onNotice(error instanceof Error ? error.message : "Unable to load staff accounts.");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+    void fetchStaff();
+    return () => {
+      cancelled = true;
+    };
+  }, [onNotice]);
+
+  async function createStaff(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const password = String(formData.get("password") ?? "");
+    if (password.length < 8) {
+      onNotice("Temporary password must be at least 8 characters.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload = await apiJson<{ user: StaffUser }>("/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify({
+          displayName: String(formData.get("displayName") ?? "").trim(),
+          email: String(formData.get("email") ?? "").trim(),
+          password,
+          role: String(formData.get("role") ?? "DOCTOR"),
+          mfaEnabled: formData.get("mfaEnabled") === "on",
+        }),
+      });
+      setStaff((current) => [payload.user, ...current.filter((user) => user.id !== payload.user.id)]);
+      form.reset();
+      onNotice(`${payload.user.displayName} can now sign in as ${payload.user.role.toLowerCase()}.`);
+    } catch (error) {
+      onNotice(error instanceof Error ? error.message : "Unable to create staff account.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <section className="page-stack">
+      <PageTitle title="Staff Accounts" detail="Admin-only account setup for doctors and clinic administrators." />
+      <div className="staff-layout">
+        <form onSubmit={createStaff} className="card form-card">
+          <header><h2>Create staff login</h2></header>
+          <div className="form-grid">
+            <label className="span-2">Name<input name="displayName" placeholder="Dr. First Last" required /></label>
+            <label className="span-2">Email<input name="email" type="email" placeholder="doctor@clinic.com" required /></label>
+            <label>Role<select name="role" defaultValue="DOCTOR"><option value="DOCTOR">Doctor</option><option value="ADMIN">Admin</option></select></label>
+            <label>Password<input name="password" type="password" minLength={8} placeholder="Temporary password" required /></label>
+            <label className="check-line span-2"><input name="mfaEnabled" type="checkbox" />Mark MFA required</label>
+          </div>
+          <div className="form-actions">
+            <button className="primary-button" disabled={isSaving} type="submit">{isSaving ? "Creating..." : "Create account"}</button>
+          </div>
+        </form>
+        <SimpleCard title="Current staff">
+          {isLoading ? (
+            <p className="meta">Loading staff accounts...</p>
+          ) : staff.length === 0 ? (
+            <p className="empty-state">No staff accounts yet.</p>
+          ) : (
+            <table>
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>MFA</th><th>Created</th></tr></thead>
+              <tbody>{staff.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.displayName}</td>
+                  <td>{user.email}</td>
+                  <td><Badge label={user.role === "ADMIN" ? "Admin" : "Doctor"} status={user.role === "ADMIN" ? "Completed" : "Scheduled"} /></td>
+                  <td>{user.mfaEnabled ? "Required" : "Optional"}</td>
+                  <td className="mono">{formatDate(user.createdAt)}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          )}
+        </SimpleCard>
+      </div>
+    </section>
+  );
+}
+
 function DoctorSettings({ settings, update }: { settings: Settings; update: (patch: Partial<Settings>) => void }) {
   return (
     <section className="page-stack">
@@ -1346,6 +1473,12 @@ function plainDiagnosis(value: string) {
 
 function formatLabel(value: string) {
   return value.replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleDateString();
 }
 
 function calculateBmi(weight: string, height: string) {
