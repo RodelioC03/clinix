@@ -1049,9 +1049,24 @@ function SlideOver({
 }) {
   const [search, setSearch] = useState("");
   const [trendOpen, setTrendOpen] = useState(false);
+  const customDrugName = search.trim();
   const matchingDrugs = drugShortcuts.filter((rx) =>
     [rx.drug, rx.dose, rx.frequency, rx.duration, rx.sig].join(" ").toLowerCase().includes(search.toLowerCase()),
   );
+
+  function addCustomPrescription() {
+    addPrescription({
+      id: "RX-TPL-CUSTOM",
+      drug: customDrugName || "Custom drug",
+      dose: "",
+      frequency: "",
+      duration: "",
+      sig: "",
+      quantity: "",
+      dateIssued: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    });
+    setSearch("");
+  }
 
   if (panel === "none") return <p className="empty-panel">Choose an action. It opens here without leaving SOAP.</p>;
   if (panel === "prescription") {
@@ -1060,6 +1075,7 @@ function SlideOver({
         <input value={search} placeholder="Search drug..." onChange={(event) => setSearch(event.target.value)} />
         <div className="suggestions">
           {matchingDrugs.map((rx) => <button key={rx.id} onClick={() => addPrescription(rx)}>{rx.drug} {rx.dose} {rx.frequency}</button>)}
+          <button onClick={addCustomPrescription}>{customDrugName ? `Add ${customDrugName}` : "Add custom drug"}</button>
         </div>
         <EditablePrescriptionList
           items={draft.prescriptions}
