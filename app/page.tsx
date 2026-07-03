@@ -121,6 +121,7 @@ type StaffUser = {
   role: "ADMIN" | "DOCTOR";
   displayName: string;
   mfaEnabled: boolean;
+  disabledAt: string | null;
   createdAt: string;
 };
 
@@ -714,7 +715,7 @@ export default function Home() {
         <FollowUps appointments={state.appointments} patients={state.patients} updateAppointment={updateAppointment} />
       )}
       {doctorView === "Staff" && session.role === "ADMIN" && (
-        <StaffAccounts onNotice={setNotice} />
+        <StaffAccounts currentUserId={session.id} onNotice={setNotice} />
       )}
       {doctorView === "Settings" && (
         <DoctorSettings
@@ -1194,10 +1195,11 @@ function FollowUps({ appointments, patients, updateAppointment }: { appointments
   );
 }
 
-function StaffAccounts({ onNotice }: { onNotice: (text: string) => void }) {
+function StaffAccounts({ currentUserId, onNotice }: { currentUserId?: string; onNotice: (text: string) => void }) {
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -1249,6 +1251,23 @@ function StaffAccounts({ onNotice }: { onNotice: (text: string) => void }) {
     }
   }
 
+  async function toggleStaff(user: StaffUser) {
+    const nextDisabled = !user.disabledAt;
+    setTogglingId(user.id);
+    try {
+      const payload = await apiJson<{ user: StaffUser }>("/api/admin/users", {
+        method: "PATCH",
+        body: JSON.stringify({ id: user.id, disabled: nextDisabled }),
+      });
+      setStaff((current) => current.map((item) => (item.id === payload.user.id ? payload.user : item)));
+      onNotice(`${payload.user.displayName} is now ${payload.user.disabledAt ? "deactivated" : "active"}.`);
+    } catch (error) {
+      onNotice(error instanceof Error ? error.message : "Unable to update staff access.");
+    } finally {
+      setTogglingId("");
+    }
+  }
+
   return (
     <section className="page-stack">
       <PageTitle title="Staff Accounts" detail="Admin-only account setup for doctors and clinic administrators." />
@@ -1273,14 +1292,24 @@ function StaffAccounts({ onNotice }: { onNotice: (text: string) => void }) {
             <p className="empty-state">No staff accounts yet.</p>
           ) : (
             <table>
-              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>MFA</th><th>Created</th></tr></thead>
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>MFA</th><th>Created</th><th></th></tr></thead>
               <tbody>{staff.map((user) => (
-                <tr key={user.id}>
+                <tr className={user.disabledAt ? "muted-row" : ""} key={user.id}>
                   <td>{user.displayName}</td>
                   <td>{user.email}</td>
                   <td><Badge label={user.role === "ADMIN" ? "Admin" : "Doctor"} status={user.role === "ADMIN" ? "Completed" : "Scheduled"} /></td>
+                  <td><Badge label={user.disabledAt ? "Inactive" : "Active"} status={user.disabledAt ? "Cancelled" : "Completed"} /></td>
                   <td>{user.mfaEnabled ? "Required" : "Optional"}</td>
                   <td className="mono">{formatDate(user.createdAt)}</td>
+                  <td>
+                    {user.id === currentUserId ? (
+                      <span className="meta">Current user</span>
+                    ) : (
+                      <button className="secondary-button" disabled={togglingId === user.id} onClick={() => toggleStaff(user)}>
+                        {togglingId === user.id ? "Updating..." : user.disabledAt ? "Restore" : "Deactivate"}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}</tbody>
             </table>

@@ -27,6 +27,7 @@ if (!email || !email.includes("@")) {
       passwordHash,
       role: "ADMIN",
       displayName,
+      disabledAt: null,
     },
     select: {
       email: true,

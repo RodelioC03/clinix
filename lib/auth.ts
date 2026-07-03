@@ -56,6 +56,11 @@ export async function getSession(request: Request): Promise<SessionContext | nul
     return null;
   }
 
+  if (session.user.disabledAt) {
+    await prisma.session.delete({ where: { id: session.id } }).catch(() => undefined);
+    return null;
+  }
+
   return {
     user: {
       id: session.user.id,

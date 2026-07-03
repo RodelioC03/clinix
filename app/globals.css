@@ -532,6 +532,14 @@ th {
   padding: 14px;
 }
 
+.muted-row {
+  color: var(--muted);
+}
+
+.muted-row .badge {
+  opacity: 0.84;
+}
+
 .patient-sticky {
   position: sticky;
   top: 74px;

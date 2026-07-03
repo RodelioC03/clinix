@@ -36,6 +36,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid email or password." }, { status: 401 });
   }
 
+  if (user.disabledAt) {
+    return Response.json({ error: "This account is deactivated. Contact an administrator." }, { status: 403 });
+  }
+
   const { cookie } = await createSession(user.id);
   await prisma.auditLog.create({
     data: { userId: user.id, action: "LOGIN", target: user.email },

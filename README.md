@@ -176,6 +176,8 @@ npm.cmd run account:create-admin
 
 Then sign in with that admin account, open `Staff`, and create doctor logins.
 
+Staff accounts can be deactivated from `Staff`. Deactivation removes sign-in access and clears active sessions, but keeps the account record for audit history. The app prevents admins from deactivating their own account or the last active admin.
+
 ## Demo Accounts
 
 Demo accounts only exist after running `npm.cmd run prisma:seed`.
