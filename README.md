@@ -36,6 +36,71 @@ This is still a development build. Before real patient use, complete a full secu
 
 For deployment, use a Node-compatible host with PostgreSQL support, such as Railway, Render, Fly.io, a VPS, or Vercel plus a managed PostgreSQL provider. This Prisma/PostgreSQL version is not meant for static GitHub Pages or Cloudflare Worker-only hosting.
 
+## Cloud Deployment
+
+The app is prepared for cloud deployment with:
+
+- `npm run build` generating Prisma Client and building Next.js
+- `npm start` listening on the host-provided `PORT`
+- `npm run deploy:migrate` applying Prisma migrations
+- `railway.json` for Railway
+- `render.yaml` for Render Blueprint deployments
+- `vercel.json` for Vercel builds
+
+### Railway
+
+1. Create a Railway project from the GitHub repo.
+2. Add a Railway PostgreSQL service.
+3. In the Clinix web service, set:
+
+```text
+DATABASE_URL=<Railway PostgreSQL connection string>
+```
+
+4. Railway will use:
+
+```bash
+npm ci && npm run build
+npm run deploy:migrate
+npm start
+```
+
+5. Do not run `npm run prisma:seed` in production unless you intentionally want demo accounts.
+
+### Render
+
+Render can use `render.yaml` to create both the web service and PostgreSQL database.
+
+1. Create a new Render Blueprint from this repository.
+2. Render will create:
+   - `clinix` web service
+   - `clinix-postgres` PostgreSQL database
+3. The blueprint wires `DATABASE_URL` from the database into the web service.
+4. Render runs migrations with:
+
+```bash
+npm run deploy:migrate
+```
+
+### Vercel
+
+Vercel works best with a managed PostgreSQL provider such as Neon, Supabase, or Vercel Postgres.
+
+1. Import the GitHub repo into Vercel.
+2. Create/connect a PostgreSQL database.
+3. Add `DATABASE_URL` in Vercel Project Settings.
+4. Set the build command to:
+
+```bash
+npm run build
+```
+
+5. Run migrations from your machine or a one-off deployment job:
+
+```bash
+npm run deploy:migrate
+```
+
 ## Setup
 
 1. Install dependencies:

@@ -7,14 +7,18 @@
   },
   "scripts": {
     "dev": "next dev -H 127.0.0.1 -p 3001",
-    "build": "next build",
-    "start": "next start -H 127.0.0.1 -p 3001",
+    "build": "prisma generate && next build",
+    "start": "node scripts/start.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "node prisma/seed.js"
+    "prisma:seed": "node prisma/seed.js",
+    "deploy:migrate": "prisma migrate deploy",
+    "deploy:check": "npm run lint && npm run build",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.11.1",
