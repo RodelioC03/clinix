@@ -361,8 +361,8 @@ export default function Home() {
         }));
         setActivePatientId(firstPatientId);
         setDraft(newConsult(firstPatientId));
-      } catch (error) {
-        setNotice(error instanceof Error ? error.message : "Unable to load session.");
+      } catch {
+        setNotice("Database auth is not ready. Check DATABASE_URL and run Prisma migration/seed.");
       }
     })();
   }, []);
@@ -1476,12 +1476,9 @@ async function apiJson<T>(url: string, init: RequestInit = {}): Promise<T> {
       ...(init.headers ?? {}),
     },
   });
-  const payload = await response.json().catch(() => null);
+  const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = payload && typeof payload.error === "string"
-      ? payload.error
-      : `Request failed (${response.status})`;
-    throw new Error(message);
+    throw new Error(typeof payload.error === "string" ? payload.error : "Request failed");
   }
   return payload as T;
 }

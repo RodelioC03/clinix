@@ -12,57 +12,50 @@ const loginSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  try {
-    const ip = requestIp(request);
-    if (!checkRateLimit(`login:${ip}`, 8, 60_000)) {
-      return Response.json({ error: "Too many login attempts. Try again shortly." }, { status: 429 });
-    }
-
-    const parsed = loginSchema.safeParse(await request.json().catch(() => null));
-    if (!parsed.success) {
-      return Response.json({ error: "Enter a valid email and password." }, { status: 400 });
-    }
-
-    const email = parsed.data.email.toLowerCase();
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        patient: {
-          select: { id: true },
-        },
-      },
-    });
-
-    if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
-      return Response.json({ error: "Invalid email or password." }, { status: 401 });
-    }
-
-    if (user.disabledAt) {
-      return Response.json({ error: "This account is deactivated. Contact an administrator." }, { status: 403 });
-    }
-
-    const { cookie } = await createSession(user.id);
-    await prisma.auditLog.create({
-      data: { userId: user.id, action: "LOGIN", target: user.email },
-    });
-
-    return withCookie(
-      Response.json({
-        user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          displayName: user.displayName,
-          mfaEnabled: user.mfaEnabled,
-          patientId: user.patient?.id ?? null,
-        },
-      }),
-      cookie,
-    );
-  } catch {
-    return Response.json(
-      { error: "Database connection failed. Check DATABASE_URL, DIRECT_URL, and the latest Vercel redeploy." },
-      { status: 503 },
-    );
+  const ip = requestIp(request);
+  if (!checkRateLimit(`login:${ip}`, 8, 60_000)) {
+    return Response.json({ error: "Too many login attempts. Try again shortly." }, { status: 429 });
   }
+
+  const parsed = loginSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return Response.json({ error: "Enter a valid email and password." }, { status: 400 });
+  }
+
+  const email = parsed.data.email.toLowerCase();
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: {
+      patient: {
+        select: { id: true },
+      },
+    },
+  });
+
+  if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
+    return Response.json({ error: "Invalid email or password." }, { status: 401 });
+  }
+
+  if (user.disabledAt) {
+    return Response.json({ error: "This account is deactivated. Contact an administrator." }, { status: 403 });
+  }
+
+  const { cookie } = await createSession(user.id);
+  await prisma.auditLog.create({
+    data: { userId: user.id, action: "LOGIN", target: user.email },
+  });
+
+  return withCookie(
+    Response.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        displayName: user.displayName,
+        mfaEnabled: user.mfaEnabled,
+        patientId: user.patient?.id ?? null,
+      },
+    }),
+    cookie,
+  );
 }
